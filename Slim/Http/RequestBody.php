@@ -18,10 +18,31 @@ class RequestBody extends Body
      */
     public function __construct()
     {
-        $stream = fopen('php://temp', 'w+');
-        stream_copy_to_stream(fopen('php://input', 'r'), $stream);
-        rewind($stream);
+        $openingTempTook = 0;
+        $streamCopyTook = 0;
+        $rewindTook = 0;
 
-        parent::__construct($stream);
+        try {
+            $start = microtime(true);
+            $stream = fopen('php://temp', 'w+');
+            $openingTempTook = microtime(true) - $start;
+            stream_copy_to_stream(fopen('php://input', 'r'), $stream);
+            $streamCopyTook = microtime(true) - $start;
+            rewind($stream);
+            $rewindTook = microtime(true) - $start;
+
+            parent::__construct($stream);
+        } finally {
+            $stop = microtime(true);
+            if ($stop - $start > 1) {
+                error_log('Request Body took ' . ($stop - $start));
+                error_log(print_r([
+                    'openingTempTook' => $openingTempTook,
+                    'streamCopyTook' => $streamCopyTook,
+                    'rewindTook' => $rewindTook,
+                    'total' => $stop - $start,
+                ], 1));
+            }
+        }
     }
 }
